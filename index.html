@@ -126,7 +126,7 @@ const NOMI_STATO = {
 const dati = {};
 const strati = {};
 
-const mappa = L.map("mappa", { zoomControl: false });
+const mappa = L.map("mappa", { zoomControl: false, zoomSnap: 0.25 });
 L.control.zoom({ position: "topright" }).addTo(mappa);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
@@ -152,7 +152,7 @@ const confini = L.geoJSON(TERRITORI, {
     strato.bindPopup(() => scheda(f.properties));
   }
 }).addTo(mappa);
-mappa.fitBounds(confini.getBounds(), { padding: [24, 24] });
+mappa.fitBounds(confini.getBounds(), { padding: [18, 18] });
 
 let timerAvviso = null;
 function mostraAvviso(testo, durata) {
