@@ -152,7 +152,7 @@ const confini = L.geoJSON(TERRITORI, {
     strato.bindPopup(() => scheda(f.properties));
   }
 }).addTo(mappa);
-mappa.fitBounds(confini.getBounds(), { padding: [10, 10] });
+mappa.fitBounds(confini.getBounds(), { padding: [24, 24] });
 
 let timerAvviso = null;
 function mostraAvviso(testo, durata) {
