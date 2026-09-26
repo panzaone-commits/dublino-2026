@@ -101,6 +101,50 @@ body {
 .scheda td .ro { color: var(--grigio); }
 .scheda a { font-weight: 600; }
 .scheda a .ro { display: block; font-weight: 500; }
+.azioni [hidden] { display: none; }
+.azioni.quattro { gap: 6px; padding-left: 10px; padding-right: 10px; }
+.azioni.quattro a, .azioni.quattro button { font-size: 12px; padding-left: 2px; padding-right: 2px; }
+.gruppo-stato {
+  position: absolute; right: 10px; bottom: 100px; z-index: 600;
+  max-width: 170px; background: #fff3e6; border: 1px solid #e8710a; border-radius: 8px;
+  padding: 5px 8px; font-size: 11px; line-height: 1.3; box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+}
+.gruppo-stato b { display: block; font-size: 12px; color: #8a3f00; }
+.gruppo-stato .ro { display: block; color: var(--grigio); }
+.leaflet-tooltip.compagno {
+  background: #e8710a; border: 0; border-radius: 10px; padding: 1px 7px; box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+  font: 700 11px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #fff;
+}
+.leaflet-tooltip.compagno.vecchio { background: #8a97a6; }
+.leaflet-tooltip.compagno::before { display: none; }
+.foglio {
+  position: fixed; inset: 0; z-index: 2000; background: rgba(28, 39, 51, .45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.foglio[hidden] { display: none; }
+.foglio > div {
+  width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; background: var(--carta);
+  border-radius: 14px 14px 0 0; padding: 18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.foglio h2 { margin: 0 0 2px; font-size: 16px; color: var(--blu); text-wrap: balance; }
+.foglio h2 + p { margin: 0 0 10px; font-size: 13px; color: var(--grigio); }
+.foglio ul { margin: 0 0 12px; padding-left: 18px; font-size: 13px; }
+.foglio li { margin-bottom: 7px; }
+.foglio li .ro { display: block; color: var(--grigio); }
+.foglio label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.foglio label .ro { font-weight: 400; color: var(--grigio); }
+.foglio input {
+  width: 100%; font: 16px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  padding: 10px; border: 1px solid var(--linea); border-radius: 8px; margin-bottom: 12px;
+}
+.foglio .scelte { display: flex; gap: 8px; }
+.foglio .scelte button {
+  flex: 1; cursor: pointer; border-radius: 10px; padding: 11px 6px;
+  font: 600 14px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  border: 1px solid var(--linea); background: var(--fondo); color: var(--blu);
+}
+.foglio .scelte button.si { background: var(--blu); border-color: var(--blu); color: #fff; }
+.foglio .scelte .ro { display: block; font-size: 11px; font-weight: 500; opacity: .8; }
 </style>
 </head>
 <body>
@@ -121,6 +165,7 @@ body {
     <div><i style="background:rgba(138,151,166,.12);border-color:#3d4b5c;border-style:dashed"></i>da fare · de făcut · to do</div>
   </div>
   <div id="avviso" class="avviso" role="status" hidden></div>
+  <div id="gruppo-stato" class="gruppo-stato" role="status" hidden></div>
   <button type="button" id="centra" class="centra" hidden aria-label="Centra su di me · Centrează pe mine" title="Centra su di me · Centrează pe mine">
     <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="10" r="2.5" fill="currentColor"/><path d="M10 0v4M10 16v4M0 10h4M16 10h4" stroke="currentColor" stroke-width="2"/></svg>
   </button>
@@ -129,11 +174,30 @@ body {
   <a href="https://forms.gle/HXt5hAB9EWM1xTkM8">✏️ Modulo<span class="ro" lang="ro">Formular</span></a>
   <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vSRQwPHOPAH0dqWf3zX9bZhwovbuU8sEoWZsU54bjrfgoWmRveRevBj_6Qqexm-UXBN-cbCh__BxgM4/pubhtml">📊 Tabellone<span class="ro" lang="ro">Tabel</span></a>
   <button type="button" id="dove" aria-pressed="false"><span id="dove-it">📍 Dove sono</span><span class="ro" lang="ro" id="dove-ro">Unde sunt</span></button>
+  <button type="button" id="gruppo" aria-pressed="false" hidden>👥 Gruppo<span class="ro" lang="ro">Grupul</span></button>
 </nav>
+<div id="consenso" class="foglio" role="dialog" aria-modal="true" aria-labelledby="consenso-titolo" hidden>
+  <div>
+    <h2 id="consenso-titolo">Condividi la tua posizione con il gruppo?</h2>
+    <p lang="ro">Îți partajezi locația cu grupul?</p>
+    <ul>
+      <li>Gli altri del gruppo vedono dove sei solo mentre questa mappa è aperta sul tuo telefono.<span class="ro" lang="ro">Ceilalți din grup văd unde ești doar cât timp harta e deschisă pe telefonul tău.</span></li>
+      <li>Non resta nessuno storico: dopo 2 minuti senza aggiornamenti la tua posizione sparisce da sola.<span class="ro" lang="ro">Nu rămâne niciun istoric: după 2 minute fără actualizări locația ta dispare singură.</span></li>
+      <li>Vedi gli altri solo mentre condividi anche tu. La spegni quando vuoi con lo stesso tasto.<span class="ro" lang="ro">Îi vezi pe ceilalți doar cât timp partajezi și tu. O oprești oricând cu același buton.</span></li>
+    </ul>
+    <label for="consenso-nome">Il tuo nome sulla mappa <span class="ro" lang="ro">· Numele tău pe hartă</span></label>
+    <input id="consenso-nome" maxlength="20" autocomplete="given-name" enterkeyhint="done">
+    <div class="scelte">
+      <button type="button" id="consenso-no">No<span class="ro" lang="ro">Nu</span></button>
+      <button type="button" id="consenso-si" class="si">Sì, condividi<span class="ro" lang="ro">Da, partajez</span></button>
+    </div>
+  </div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script>
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSRQwPHOPAH0dqWf3zX9bZhwovbuU8sEoWZsU54bjrfgoWmRveRevBj_6Qqexm-UXBN-cbCh__BxgM4/pub?gid=1989052211&single=true&output=csv";
+const POSIZIONI_URL = "https://script.google.com/macros/s/AKfycbztqHMMEu96zmRjL_mBkzxqvKFG-TkIxS-bSrn7ziZP-HE4HBbPZfKsH3kV6c1sEMusSg/exec";
 const TERRITORI = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{"code":"TR-01","name":"Tyrrelstown 01","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779002"},"geometry":{"type":"Polygon","coordinates":[[[-6.381469,53.434224],[-6.384891,53.433412],[-6.386307,53.433405],[-6.387273,53.433239],[-6.387455,53.432108],[-6.387734,53.430861],[-6.389494,53.431002],[-6.389236,53.43292],[-6.389043,53.433968],[-6.388657,53.434837],[-6.385599,53.434383],[-6.38472,53.435214],[-6.384033,53.436135],[-6.381426,53.435508],[-6.380042,53.435297],[-6.379493,53.434621],[-6.381469,53.434224]]]}},{"type":"Feature","properties":{"code":"TR-02","name":"Tyrrelstown 02","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779003"},"geometry":{"type":"Polygon","coordinates":[[[-6.376682,53.431597],[-6.378398,53.431264],[-6.380975,53.434339],[-6.379472,53.43464],[-6.376682,53.431597]]]}},{"type":"Feature","properties":{"code":"TR-03","name":"Tyrrelstown 03","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779004"},"geometry":{"type":"Polygon","coordinates":[[[-6.376016,53.434602],[-6.375809,53.434166],[-6.375455,53.433789],[-6.375262,53.433578],[-6.375112,53.433284],[-6.374946,53.432974],[-6.374586,53.432581],[-6.374232,53.432277],[-6.373517,53.431609],[-6.376145,53.430913],[-6.380196,53.435426],[-6.379033,53.435323],[-6.376016,53.434602]]]}},{"type":"Feature","properties":{"code":"TR-04","name":"Tyrrelstown 04","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779005"},"geometry":{"type":"Polygon","coordinates":[[[-6.377681,53.428311],[-6.377488,53.429474],[-6.376821,53.429712],[-6.375298,53.429897],[-6.374516,53.429059],[-6.373635,53.428357],[-6.374216,53.428113],[-6.374785,53.427646],[-6.377167,53.427307],[-6.377681,53.428311]]]}},{"type":"Feature","properties":{"code":"TR-05","name":"Tyrrelstown 05","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779006"},"geometry":{"type":"Polygon","coordinates":[[[-6.37048,53.426911],[-6.370944,53.42654],[-6.371319,53.426067],[-6.371609,53.425907],[-6.37192,53.425811],[-6.37236,53.425779],[-6.372808,53.425792],[-6.372821,53.427071],[-6.374761,53.427665],[-6.374225,53.428106],[-6.373613,53.428356],[-6.372939,53.427959],[-6.372188,53.427595],[-6.371963,53.427889],[-6.371845,53.428228],[-6.37177,53.428579],[-6.371609,53.428886],[-6.37001,53.42849],[-6.370236,53.427972],[-6.37048,53.426911]]]}},{"type":"Feature","properties":{"code":"TR-06","name":"Tyrrelstown 06","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779007"},"geometry":{"type":"Polygon","coordinates":[[[-6.37047,53.426931],[-6.367605,53.425845],[-6.368498,53.425051],[-6.368921,53.424859],[-6.369517,53.42475],[-6.370579,53.424584],[-6.370836,53.424504],[-6.371089,53.424315],[-6.371148,53.424088],[-6.371135,53.423876],[-6.371335,53.423823],[-6.37162,53.423833],[-6.372162,53.423919],[-6.373173,53.424112],[-6.372864,53.425779],[-6.37206,53.425779],[-6.37148,53.425965],[-6.371212,53.426195],[-6.37103,53.426444],[-6.37047,53.426931]]]}},{"type":"Feature","properties":{"code":"TR-07","name":"Tyrrelstown 07","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779010"},"geometry":{"type":"Polygon","coordinates":[[[-6.36282,53.423593],[-6.36456,53.422832],[-6.366491,53.422244],[-6.370437,53.421298],[-6.370606,53.421563],[-6.3706,53.422132],[-6.370295,53.422544],[-6.370257,53.422791],[-6.3703,53.423062],[-6.370482,53.423312],[-6.370676,53.423478],[-6.370938,53.423663],[-6.371124,53.423906],[-6.371142,53.424108],[-6.371062,53.424296],[-6.370901,53.424456],[-6.370665,53.424565],[-6.369013,53.424846],[-6.368557,53.425019],[-6.368203,53.425278],[-6.367594,53.425843],[-6.364979,53.424801],[-6.363809,53.424245],[-6.36282,53.423593]]]}},{"type":"Feature","properties":{"code":"TR-08","name":"Tyrrelstown 08","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779013"},"geometry":{"type":"Polygon","coordinates":[[[-6.391477,53.430997],[-6.390266,53.430651],[-6.389033,53.430197],[-6.386726,53.429276],[-6.387016,53.428784],[-6.38737,53.428279],[-6.388035,53.427902],[-6.388966,53.42741],[-6.389827,53.428042],[-6.390781,53.428675],[-6.391811,53.429027],[-6.393043,53.42943],[-6.393292,53.429577],[-6.392434,53.430216],[-6.391477,53.430997]]]}},{"type":"Feature","properties":{"code":"TR-09","name":"Tyrrelstown 09","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779014"},"geometry":{"type":"Polygon","coordinates":[[[-6.388977,53.42741],[-6.389521,53.426741],[-6.390007,53.42608],[-6.395586,53.42716],[-6.394601,53.428388],[-6.393301,53.429584],[-6.392101,53.429126],[-6.39143,53.428925],[-6.390781,53.428675],[-6.38981,53.428046],[-6.388977,53.42741]]]}},{"type":"Feature","properties":{"code":"TR-10","name":"Tyrrelstown 10","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779015"},"geometry":{"type":"Polygon","coordinates":[[[-6.389397,53.426892],[-6.388973,53.427407],[-6.388684,53.427211],[-6.388265,53.427052],[-6.38723,53.426767],[-6.386012,53.426489],[-6.38568,53.426374],[-6.385353,53.426227],[-6.384945,53.425984],[-6.384574,53.425632],[-6.385331,53.425313],[-6.387616,53.425824],[-6.389756,53.426413],[-6.389397,53.426892]]]}},{"type":"Feature","properties":{"code":"TR-11","name":"Tyrrelstown 11","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779016"},"geometry":{"type":"Polygon","coordinates":[[[-6.383427,53.426502],[-6.383738,53.425799],[-6.383931,53.425322],[-6.384001,53.425182],[-6.384087,53.425115],[-6.38428,53.425178],[-6.384419,53.425329],[-6.384693,53.425725],[-6.384886,53.425942],[-6.385192,53.426153],[-6.385947,53.426489],[-6.386742,53.426642],[-6.387536,53.426863],[-6.388298,53.427068],[-6.388684,53.427211],[-6.388967,53.427403],[-6.38798,53.427937],[-6.38789,53.427831],[-6.387718,53.427752],[-6.387295,53.427646],[-6.386887,53.427521],[-6.386704,53.427521],[-6.386045,53.427368],[-6.385583,53.427253],[-6.38546,53.427227],[-6.385406,53.42717],[-6.385208,53.427186],[-6.384773,53.427109],[-6.384071,53.426905],[-6.3837,53.426735],[-6.383427,53.426502]]]}},{"type":"Feature","properties":{"code":"TR-12","name":"Tyrrelstown 12","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779017"},"geometry":{"type":"Polygon","coordinates":[[[-6.387708,53.428119],[-6.38737,53.428279],[-6.386955,53.428861],[-6.382829,53.427851],[-6.383062,53.427646],[-6.383196,53.42717],[-6.383427,53.426479],[-6.383566,53.426585],[-6.38369,53.426719],[-6.383963,53.426876],[-6.384248,53.426978],[-6.385235,53.427192],[-6.385396,53.42716],[-6.385444,53.427234],[-6.385637,53.427269],[-6.386088,53.427381],[-6.386463,53.42748],[-6.386662,53.427521],[-6.386876,53.427528],[-6.387708,53.427745],[-6.387906,53.427841],[-6.388029,53.427937],[-6.387708,53.428119]]]}},{"type":"Feature","properties":{"code":"TR-13","name":"Tyrrelstown 13","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779019"},"geometry":{"type":"Polygon","coordinates":[[[-6.378274,53.426149],[-6.378336,53.425974],[-6.378497,53.425952],[-6.378636,53.425869],[-6.37876,53.425779],[-6.378915,53.425709],[-6.379361,53.425738],[-6.379779,53.425827],[-6.38016,53.425981],[-6.380627,53.426153],[-6.381024,53.426227],[-6.381748,53.426342],[-6.381962,53.426355],[-6.382166,53.426316],[-6.382472,53.426326],[-6.382982,53.42639],[-6.38342,53.426486],[-6.383034,53.427644],[-6.380514,53.426946],[-6.379184,53.426489],[-6.378274,53.426149]]]}},{"type":"Feature","properties":{"code":"TR-14","name":"Tyrrelstown 14","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779020"},"geometry":{"type":"Polygon","coordinates":[[[-6.377231,53.42529],[-6.377451,53.425182],[-6.377585,53.424999],[-6.377862,53.424609],[-6.383731,53.425802],[-6.383436,53.426486],[-6.382944,53.426377],[-6.382536,53.426339],[-6.382139,53.426323],[-6.38193,53.426364],[-6.381281,53.426278],[-6.380621,53.426157],[-6.380192,53.425997],[-6.379613,53.425776],[-6.379253,53.425728],[-6.37891,53.425709],[-6.378652,53.425866],[-6.378497,53.425952],[-6.378331,53.425974],[-6.378041,53.425914],[-6.377687,53.425767],[-6.377467,53.425671],[-6.377354,53.425578],[-6.377231,53.42529]]]}},{"type":"Feature","properties":{"code":"TR-15","name":"Tyrrelstown 15","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779022"},"geometry":{"type":"Polygon","coordinates":[[[-6.377226,53.425265],[-6.377333,53.425473],[-6.377472,53.42568],[-6.377943,53.425882],[-6.377664,53.426359],[-6.372816,53.425965],[-6.37281,53.425777],[-6.373084,53.425725],[-6.373481,53.425466],[-6.373808,53.425297],[-6.374189,53.425182],[-6.374828,53.425169],[-6.375514,53.425233],[-6.376072,53.425217],[-6.377226,53.425265]]]}},{"type":"Feature","properties":{"code":"TR-16","name":"Tyrrelstown 16","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779023"},"geometry":{"type":"Polygon","coordinates":[[[-6.379945,53.425031],[-6.380417,53.424213],[-6.381189,53.424447],[-6.381865,53.424079],[-6.382075,53.424219],[-6.382375,53.42437],[-6.382917,53.424593],[-6.384097,53.425063],[-6.38399,53.425185],[-6.383731,53.425802],[-6.381791,53.425405],[-6.379945,53.425031]]]}},{"type":"Feature","properties":{"code":"TR-17","name":"Tyrrelstown 17","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779025"},"geometry":{"type":"Polygon","coordinates":[[[-6.381206,53.424446],[-6.380428,53.424213],[-6.379939,53.425031],[-6.377868,53.424609],[-6.378646,53.423555],[-6.378717,53.42304],[-6.379076,53.422647],[-6.380385,53.423027],[-6.380997,53.423382],[-6.381855,53.424082],[-6.381273,53.424405],[-6.381206,53.424446]]]}},{"type":"Feature","properties":{"code":"TR-18","name":"Tyrrelstown 18","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779032"},"geometry":{"type":"Polygon","coordinates":[[[-6.371113,53.423876],[-6.370322,53.423107],[-6.370289,53.422564],[-6.370579,53.42211],[-6.370543,53.421236],[-6.374677,53.421796],[-6.37872,53.422571],[-6.378701,53.423081],[-6.378733,53.423324],[-6.378636,53.423561],[-6.37796,53.424456],[-6.377628,53.424955],[-6.377467,53.425204],[-6.37725,53.425269],[-6.376094,53.425204],[-6.375493,53.425217],[-6.374838,53.425159],[-6.37428,53.425159],[-6.373776,53.425281],[-6.373315,53.425556],[-6.37309,53.425715],[-6.372864,53.425767],[-6.373165,53.424117],[-6.372221,53.423932],[-6.371437,53.423817],[-6.371113,53.423876]]]}},{"type":"Feature","properties":{"code":"TR-19","name":"Tyrrelstown 19","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8779040"},"geometry":{"type":"Polygon","coordinates":[[[-6.395867,53.421585],[-6.395663,53.422193],[-6.395309,53.422647],[-6.395513,53.422915],[-6.395502,53.423184],[-6.395524,53.423459],[-6.395395,53.42365],[-6.394247,53.423823],[-6.393796,53.423561],[-6.393871,53.423337],[-6.394161,53.423235],[-6.394376,53.423081],[-6.392627,53.421969],[-6.391798,53.421459],[-6.39311,53.420901],[-6.39341,53.420729],[-6.39356,53.420486],[-6.393592,53.420262],[-6.393442,53.420045],[-6.394245,53.42011],[-6.395918,53.420979],[-6.395867,53.421585]]]}},{"type":"Feature","properties":{"code":"TR-20","name":"Tyrrelstown 20","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789169"},"geometry":{"type":"Polygon","coordinates":[[[-6.39437,53.423083],[-6.394158,53.423233],[-6.393869,53.423339],[-6.393795,53.423564],[-6.39276,53.423794],[-6.39092,53.423583],[-6.390996,53.423321],[-6.391044,53.423037],[-6.391135,53.422564],[-6.391087,53.422465],[-6.39114,53.422397],[-6.390888,53.422129],[-6.3918,53.421464],[-6.39437,53.423083]]]}},{"type":"Feature","properties":{"code":"TR-21","name":"Tyrrelstown 21","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789170"},"geometry":{"type":"Polygon","coordinates":[[[-6.388554,53.423424],[-6.388585,53.423345],[-6.38866,53.423238],[-6.388697,53.423086],[-6.388817,53.422982],[-6.388998,53.422989],[-6.389117,53.422925],[-6.390008,53.42217],[-6.39021,53.422217],[-6.390419,53.422222],[-6.39065,53.42219],[-6.390888,53.422129],[-6.39114,53.422401],[-6.391087,53.422469],[-6.39113,53.422572],[-6.391034,53.423078],[-6.390993,53.423328],[-6.39092,53.42358],[-6.388554,53.423424]]]}},{"type":"Feature","properties":{"code":"TR-22","name":"Tyrrelstown 22","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789198"},"geometry":{"type":"Polygon","coordinates":[[[-6.388554,53.423424],[-6.386576,53.423206],[-6.38678,53.423021],[-6.386994,53.422791],[-6.387336,53.4229],[-6.387708,53.422594],[-6.387855,53.422415],[-6.388051,53.422266],[-6.38879,53.421659],[-6.390002,53.422174],[-6.389515,53.422589],[-6.389121,53.422918],[-6.389,53.422989],[-6.388818,53.422979],[-6.388695,53.423083],[-6.388673,53.42318],[-6.388656,53.423239],[-6.388634,53.423272],[-6.388585,53.423346],[-6.388554,53.423424]]]}},{"type":"Feature","properties":{"code":"TR-23","name":"Tyrrelstown 23","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789201"},"geometry":{"type":"Polygon","coordinates":[[[-6.388035,53.422266],[-6.387686,53.422602],[-6.387316,53.422896],[-6.386983,53.422791],[-6.38658,53.423204],[-6.384559,53.423065],[-6.384934,53.422685],[-6.385074,53.422551],[-6.385159,53.422407],[-6.38531,53.422289],[-6.385587,53.421982],[-6.386313,53.422151],[-6.386549,53.42217],[-6.386806,53.422119],[-6.387107,53.422145],[-6.38738,53.421873],[-6.387332,53.421697],[-6.387225,53.421521],[-6.387078,53.421195],[-6.387413,53.42116],[-6.387686,53.421195],[-6.387965,53.421307],[-6.38879,53.421659],[-6.388035,53.422266]]]}},{"type":"Feature","properties":{"code":"TR-24","name":"Tyrrelstown 24","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789203"},"geometry":{"type":"Polygon","coordinates":[[[-6.384563,53.423073],[-6.383935,53.422938],[-6.38437,53.420562],[-6.384725,53.420636],[-6.384923,53.420738],[-6.385224,53.420828],[-6.386082,53.421093],[-6.386603,53.421247],[-6.386839,53.421243],[-6.387079,53.421199],[-6.387225,53.421536],[-6.387329,53.421704],[-6.38737,53.421873],[-6.387101,53.422142],[-6.38682,53.422116],[-6.386554,53.422169],[-6.386289,53.422143],[-6.386058,53.42209],[-6.385581,53.42198],[-6.385063,53.422544],[-6.384563,53.423073]]]}},{"type":"Feature","properties":{"code":"TR-25","name":"Tyrrelstown 25","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789207"},"geometry":{"type":"Polygon","coordinates":[[[-6.398689,53.419872],[-6.398292,53.420454],[-6.397721,53.420519],[-6.395915,53.420972],[-6.394263,53.420115],[-6.394835,53.419809],[-6.395255,53.419421],[-6.395465,53.419153],[-6.395727,53.419002],[-6.395894,53.418571],[-6.397288,53.418692],[-6.398697,53.418889],[-6.398689,53.419872]]]}},{"type":"Feature","properties":{"code":"TR-26","name":"Tyrrelstown 26","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789210"},"geometry":{"type":"Polygon","coordinates":[[[-6.395722,53.418999],[-6.395459,53.419169],[-6.395271,53.419405],[-6.394821,53.419808],[-6.394267,53.420109],[-6.393404,53.420039],[-6.393083,53.41984],[-6.392675,53.41975],[-6.392739,53.419201],[-6.392927,53.41905],[-6.392997,53.418814],[-6.392916,53.418456],[-6.392922,53.41828],[-6.39297,53.418213],[-6.39444,53.418363],[-6.395893,53.418571],[-6.395722,53.418999]]]}},{"type":"Feature","properties":{"code":"TR-27","name":"Tyrrelstown 27","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789215"},"geometry":{"type":"Polygon","coordinates":[[[-6.392922,53.41827],[-6.392911,53.418436],[-6.392965,53.418635],[-6.392981,53.418836],[-6.392927,53.419063],[-6.392739,53.419188],[-6.392669,53.419748],[-6.391135,53.41976],[-6.390288,53.419779],[-6.389827,53.419782],[-6.38947,53.419763],[-6.389312,53.419715],[-6.389204,53.419664],[-6.389054,53.419523],[-6.388902,53.419233],[-6.389124,53.419217],[-6.389419,53.419073],[-6.390079,53.418593],[-6.390422,53.418213],[-6.390583,53.418021],[-6.39076,53.417851],[-6.391886,53.418078],[-6.392964,53.418213],[-6.392922,53.41827]]]}},{"type":"Feature","properties":{"code":"TR-28","name":"Tyrrelstown 28","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789217"},"geometry":{"type":"Polygon","coordinates":[[[-6.390008,53.422177],[-6.3877,53.421203],[-6.388485,53.420575],[-6.3887,53.420719],[-6.388823,53.420722],[-6.38892,53.420748],[-6.389129,53.420831],[-6.389489,53.420866],[-6.389687,53.420809],[-6.389837,53.420834],[-6.390111,53.420799],[-6.390299,53.420802],[-6.390594,53.420844],[-6.390846,53.420908],[-6.390983,53.42089],[-6.391798,53.421452],[-6.390862,53.422122],[-6.390647,53.422186],[-6.390417,53.422228],[-6.390197,53.422215],[-6.390008,53.422177]]]}},{"type":"Feature","properties":{"code":"TR-29","name":"Tyrrelstown 29","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789218"},"geometry":{"type":"Polygon","coordinates":[[[-6.388495,53.420575],[-6.388662,53.420435],[-6.38863,53.420335],[-6.388067,53.420124],[-6.387622,53.41999],[-6.387869,53.419648],[-6.387874,53.41937],[-6.388384,53.419341],[-6.388893,53.419223],[-6.388968,53.419376],[-6.389043,53.419539],[-6.389279,53.419702],[-6.389478,53.41977],[-6.391152,53.41976],[-6.391141,53.420674],[-6.391012,53.420767],[-6.390964,53.420825],[-6.390985,53.420885],[-6.39084,53.420904],[-6.390602,53.420836],[-6.390293,53.420794],[-6.3901,53.420799],[-6.389837,53.420834],[-6.389655,53.420812],[-6.389489,53.42086],[-6.389118,53.420828],[-6.388823,53.420722],[-6.388695,53.420716],[-6.388495,53.420575]]]}},{"type":"Feature","properties":{"code":"TR-30","name":"Tyrrelstown 30","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789220"},"geometry":{"type":"Polygon","coordinates":[[[-6.393576,53.420278],[-6.393539,53.420422],[-6.393464,53.420639],[-6.393394,53.420729],[-6.39327,53.420789],[-6.393093,53.420898],[-6.392562,53.421122],[-6.391805,53.421449],[-6.390973,53.420889],[-6.390972,53.420825],[-6.391135,53.420668],[-6.391156,53.41976],[-6.392664,53.419744],[-6.393093,53.41985],[-6.393436,53.420045],[-6.393576,53.420278]]]}},{"type":"Feature","properties":{"code":"TR-31","name":"Tyrrelstown 31","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789223"},"geometry":{"type":"Polygon","coordinates":[[[-6.387858,53.419645],[-6.387611,53.419993],[-6.388099,53.42014],[-6.38862,53.420332],[-6.388654,53.420411],[-6.388641,53.420447],[-6.387707,53.421199],[-6.387391,53.421157],[-6.38708,53.421195],[-6.386828,53.421237],[-6.386586,53.42125],[-6.385589,53.42093],[-6.385122,53.420793],[-6.384929,53.420729],[-6.384739,53.420646],[-6.384704,53.420419],[-6.384763,53.420182],[-6.384661,53.419805],[-6.384559,53.419635],[-6.385412,53.419479],[-6.385846,53.419367],[-6.386227,53.419348],[-6.386737,53.419354],[-6.387064,53.419373],[-6.387482,53.41936],[-6.387702,53.419351],[-6.387867,53.419367],[-6.387858,53.419645]]]}},{"type":"Feature","properties":{"code":"TR-32","name":"Tyrrelstown 32","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789226"},"geometry":{"type":"Polygon","coordinates":[[[-6.382096,53.419249],[-6.382762,53.41929],[-6.383631,53.419233],[-6.383877,53.419264],[-6.384081,53.419319],[-6.384516,53.419648],[-6.384548,53.419655],[-6.384623,53.419757],[-6.38465,53.41984],[-6.384741,53.420112],[-6.384735,53.420633],[-6.381913,53.42078],[-6.38208,53.420057],[-6.381791,53.420086],[-6.381753,53.420013],[-6.381716,53.41992],[-6.38164,53.419741],[-6.381565,53.419408],[-6.382096,53.419249]]]}},{"type":"Feature","properties":{"code":"TR-33","name":"Tyrrelstown 33","th":"https://www.territoryhelper.com/View/CampaignTerritory/73064/8789228"},"geometry":{"type":"Polygon","coordinates":[[[-6.388912,53.419233],[-6.388727,53.418811],[-6.388475,53.418638],[-6.388088,53.418475],[-6.387616,53.418357],[-6.386753,53.418062],[-6.386415,53.417912],[-6.386147,53.417631],[-6.386034,53.417298],[-6.385844,53.416758],[-6.386452,53.416716],[-6.387477,53.416892],[-6.38833,53.417075],[-6.388941,53.417286],[-6.390744,53.417861],[-6.390063,53.418587],[-6.389397,53.419076],[-6.389108,53.41921],[-6.388912,53.419233]]]}}]};
 
 const STILI = {
@@ -296,6 +360,7 @@ function ferma() {
   if (puntino) { puntino.remove(); alone.remove(); puntino = alone = null; }
   ultimaPosizione = null;
   centra.hidden = true;
+  if (condivido) smettiDiCondividere();
   lasciaSpegnere();
   bottone.setAttribute("aria-pressed", "false");
   etichettaBottone("📍 Dove sono", "Unde sunt");
@@ -333,6 +398,7 @@ mappa.on("locationfound", e => {
   }
   aggiornaTerritorio(e.latlng);
   scriviPosizione();
+  if (condivido && !ultimoInvio) inviaAlGruppo();
 });
 
 // Il territorio cambia solo dopo due letture di fila nel nuovo: vicino a un confine il GPS balla.
@@ -413,12 +479,150 @@ document.addEventListener("pointerdown", () => {
 
 // Tornando sulla pagina (schermo riacceso, altra app chiusa) il GPS si riavvia.
 document.addEventListener("visibilitychange", () => {
+  if (condivido) {
+    if (document.hidden) salutaGruppo(); else inviaAlGruppo();
+  }
   if (document.hidden || !seguo) return;
   mappa.stopLocate();
   mappa.locate(OPZIONI_GPS);
   ultimoTocco = Date.now();
   tieniAcceso();
 });
+
+// Posizioni del gruppo. Solo chi ha il link con la chiave del gruppo vede il tasto.
+// Condivisione spenta finché la persona non la accende e dà il consenso; niente storico sul server.
+const tastoGruppo = document.getElementById("gruppo");
+const statoGruppo = document.getElementById("gruppo-stato");
+const foglio = document.getElementById("consenso");
+const compagni = {};
+let chiave = null, mioId = null, condivido = false, ultimoInvio = 0, giroGruppo = null;
+
+function leggi(nome) { try { return localStorage.getItem(nome); } catch (errore) { return null; } }
+function scrivi(nome, valore) { try { localStorage.setItem(nome, valore); } catch (errore) {} }
+
+(function preparaGruppo() {
+  const daLink = new URLSearchParams(location.hash.slice(1)).get("g");
+  if (daLink) {
+    scrivi("dublino-chiave", daLink);
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+  chiave = daLink || leggi("dublino-chiave");
+  if (!chiave || !POSIZIONI_URL.startsWith("https://")) return;
+  mioId = leggi("dublino-id");
+  if (!mioId) {
+    mioId = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => (b % 36).toString(36)).join("") + Date.now().toString(36).slice(-4);
+    scrivi("dublino-id", mioId);
+  }
+  tastoGruppo.hidden = false;
+  document.querySelector(".azioni").classList.add("quattro");
+})();
+
+tastoGruppo.addEventListener("click", () => {
+  if (condivido) { smettiDiCondividere(); return; }
+  if (leggi("dublino-consenso") && leggi("dublino-nome")) { iniziaACondividere(); return; }
+  document.getElementById("consenso-nome").value = leggi("dublino-nome") || "";
+  foglio.hidden = false;
+});
+document.getElementById("consenso-no").addEventListener("click", () => { foglio.hidden = true; });
+document.getElementById("consenso-si").addEventListener("click", () => {
+  const campo = document.getElementById("consenso-nome");
+  const nome = campo.value.trim().slice(0, 20);
+  if (!nome) { campo.focus(); return; }
+  scrivi("dublino-nome", nome);
+  scrivi("dublino-consenso", new Date().toISOString());
+  foglio.hidden = true;
+  iniziaACondividere();
+});
+
+function iniziaACondividere() {
+  condivido = true;
+  ultimoInvio = 0;
+  tastoGruppo.setAttribute("aria-pressed", "true");
+  scriviStatoGruppo("Condivisione accesa", "Partajare pornită");
+  if (!seguo) avvia();
+  inviaAlGruppo();
+  clearInterval(giroGruppo);
+  giroGruppo = setInterval(inviaAlGruppo, 15000);
+}
+
+function smettiDiCondividere() {
+  condivido = false;
+  clearInterval(giroGruppo);
+  salutaGruppo();
+  for (const id of Object.keys(compagni)) { compagni[id].remove(); delete compagni[id]; }
+  tastoGruppo.setAttribute("aria-pressed", "false");
+  statoGruppo.hidden = true;
+}
+
+function scriviStatoGruppo(it, ro) {
+  statoGruppo.replaceChildren();
+  const b = document.createElement("b"); b.textContent = "👥 " + it;
+  const r = document.createElement("span"); r.className = "ro"; r.lang = "ro"; r.textContent = ro;
+  statoGruppo.append(b, r);
+  statoGruppo.hidden = false;
+}
+
+async function inviaAlGruppo() {
+  if (!condivido || document.hidden) return;
+  const fresco = ultimaPosizione && Date.now() - ultimoFix < 60000;
+  const corpo = { k: chiave, id: mioId, a: fresco ? "io" : "leggi", n: leggi("dublino-nome") || "" };
+  if (fresco) Object.assign(corpo, { lat: ultimaPosizione.lat, lng: ultimaPosizione.lng, acc: precisione });
+  try {
+    const risposta = await fetch(POSIZIONI_URL, { method: "POST", body: JSON.stringify(corpo), cache: "no-store" });
+    const esito = await risposta.json();
+    if (!condivido) return;
+    if (!esito.ok) {
+      if (esito.occupato) return;
+      smettiDiCondividere();
+      mostraAvviso("Il link del gruppo non è valido: chiedi di nuovo il link al capitano.", "Linkul grupului nu e valid: cere din nou linkul de la căpitan.", { durata: 9000 });
+      return;
+    }
+    if (fresco) ultimoInvio = Date.now();
+    disegnaCompagni(esito.altri || []);
+  } catch (errore) {
+    if (condivido) scriviStatoGruppo("Connessione assente, riprovo", "Fără conexiune, reîncerc");
+  }
+}
+
+function disegnaCompagni(altri) {
+  const visti = new Set();
+  for (const a of altri) {
+    visti.add(a.id);
+    const vecchio = a.s > 45;
+    const testo = vecchio ? `${a.n} · ${Math.max(1, Math.round(a.s / 60))} min` : a.n;
+    const stile = { radius: 7, color: "#ffffff", weight: 2, fillColor: vecchio ? "#8a97a6" : "#e8710a", fillOpacity: 1, interactive: false };
+    let m = compagni[a.id];
+    if (!m) {
+      m = compagni[a.id] = L.circleMarker([a.lat, a.lng], stile).addTo(mappa);
+      m.bindTooltip(testo, { permanent: true, direction: "top", offset: [0, -8], className: "compagno" });
+    } else {
+      m.setLatLng([a.lat, a.lng]).setStyle(stile);
+      m.setTooltipContent(testo);
+    }
+    const etichetta = m.getTooltip().getElement();
+    if (etichetta) etichetta.classList.toggle("vecchio", vecchio);
+  }
+  for (const id of Object.keys(compagni)) {
+    if (!visti.has(id)) { compagni[id].remove(); delete compagni[id]; }
+  }
+  const n = altri.length;
+  scriviStatoGruppo(
+    n === 0 ? "Condividi · nessun altro in mappa" : `Condividi · ${n === 1 ? "1 altro" : n + " altri"} in mappa`,
+    n === 0 ? "Partajezi · nimeni altcineva pe hartă" : `Partajezi · încă ${n} pe hartă`
+  );
+}
+
+// Uscendo dalla pagina la posizione si toglie subito, senza aspettare i 2 minuti.
+function salutaGruppo() {
+  if (!chiave || !mioId) return;
+  const corpo = JSON.stringify({ k: chiave, id: mioId, a: "via" });
+  try {
+    if (!navigator.sendBeacon || !navigator.sendBeacon(POSIZIONI_URL, new Blob([corpo], { type: "text/plain" }))) {
+      fetch(POSIZIONI_URL, { method: "POST", body: corpo, keepalive: true }).catch(() => {});
+    }
+  } catch (errore) {}
+}
+window.addEventListener("pagehide", () => { if (condivido) salutaGruppo(); });
 </script>
 </body>
 </html>
