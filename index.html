@@ -51,10 +51,25 @@ body {
 .legenda i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -2px; border: 1.5px solid; border-radius: 3px; }
 .avviso {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 600;
-  width: max-content; max-width: calc(100% - 32px);
+  width: max-content; max-width: calc(100% - 104px);
   background: #fff8e1; border: 1px solid #e6c65c; border-radius: 8px;
-  padding: 7px 11px; font-size: 13px; box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+  padding: 7px 11px; font-size: 13px; text-align: center; box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+  transition: background-color .4s, border-color .4s;
 }
+.avviso b { display: block; font-size: 14px; }
+.avviso .ro { display: block; color: #5c4a12; }
+.avviso .nota { display: block; margin-top: 3px; font-size: 11px; color: var(--grigio); font-variant-numeric: tabular-nums; }
+.avviso.posto { background: #e8f0fe; border-color: #8ab4f8; }
+.avviso.posto .ro { color: #1e3a5f; }
+.avviso.nuovo { background: #d7f5e3; border-color: #2e9e64; }
+.centra {
+  position: absolute; right: 10px; top: 86px; z-index: 600;
+  width: 36px; height: 36px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--carta); color: #1a73e8; cursor: pointer;
+  border: 2px solid rgba(0, 0, 0, .2); border-radius: 6px;
+}
+.centra[hidden] { display: none; }
 .azioni {
   background: var(--carta);
   border-top: 1px solid var(--linea);
@@ -65,8 +80,11 @@ body {
   flex: 1; text-align: center; text-decoration: none; cursor: pointer;
   font: 600 13px/1 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   color: var(--blu); background: var(--fondo);
-  border: 1px solid var(--linea); border-radius: 10px; padding: 12px 6px;
+  border: 1px solid var(--linea); border-radius: 10px; padding: 9px 6px;
 }
+.azioni .ro { display: block; margin-top: 3px; font-size: 11px; font-weight: 500; color: var(--grigio); }
+.azioni button[aria-pressed="true"] { background: var(--blu); border-color: var(--blu); color: #fff; }
+.azioni button[aria-pressed="true"] .ro { color: #c9d6e8; }
 .azioni a:focus-visible, .azioni button:focus-visible { outline: 2px solid var(--blu); outline-offset: 2px; }
 .leaflet-tooltip.etichetta {
   background: rgba(255, 255, 255, .92); border: 1px solid rgba(28, 39, 51, .35); border-radius: 10px;
@@ -80,7 +98,9 @@ body {
 .scheda table { border-collapse: collapse; margin-bottom: 8px; }
 .scheda td { padding: 1px 12px 1px 0; }
 .scheda td + td { font-weight: 700; font-variant-numeric: tabular-nums; }
+.scheda td .ro { color: var(--grigio); }
 .scheda a { font-weight: 600; }
+.scheda a .ro { display: block; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -101,11 +121,14 @@ body {
     <div><i style="background:rgba(138,151,166,.12);border-color:#3d4b5c;border-style:dashed"></i>da fare · de făcut · to do</div>
   </div>
   <div id="avviso" class="avviso" role="status" hidden></div>
+  <button type="button" id="centra" class="centra" hidden aria-label="Centra su di me · Centrează pe mine" title="Centra su di me · Centrează pe mine">
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="10" r="2.5" fill="currentColor"/><path d="M10 0v4M10 16v4M0 10h4M16 10h4" stroke="currentColor" stroke-width="2"/></svg>
+  </button>
 </main>
 <nav class="azioni">
-  <a href="https://forms.gle/HXt5hAB9EWM1xTkM8">✏️ Modulo</a>
-  <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vSRQwPHOPAH0dqWf3zX9bZhwovbuU8sEoWZsU54bjrfgoWmRveRevBj_6Qqexm-UXBN-cbCh__BxgM4/pubhtml">📊 Tabellone</a>
-  <button type="button" id="dove">📍 Dove sono</button>
+  <a href="https://forms.gle/HXt5hAB9EWM1xTkM8">✏️ Modulo<span class="ro" lang="ro">Formular</span></a>
+  <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vSRQwPHOPAH0dqWf3zX9bZhwovbuU8sEoWZsU54bjrfgoWmRveRevBj_6Qqexm-UXBN-cbCh__BxgM4/pubhtml">📊 Tabellone<span class="ro" lang="ro">Tabel</span></a>
+  <button type="button" id="dove" aria-pressed="false"><span id="dove-it">📍 Dove sono</span><span class="ro" lang="ro" id="dove-ro">Unde sunt</span></button>
 </nav>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -125,6 +148,8 @@ const NOMI_STATO = {
 };
 const dati = {};
 const strati = {};
+let seguo = false;
+let centro = true;
 
 const mappa = L.map("mappa", { zoomControl: false, zoomSnap: 0.25 });
 L.control.zoom({ position: "topright" }).addTo(mappa);
@@ -135,11 +160,11 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 function scheda(p) {
   const d = dati[p.code] || { stato: "fare" };
-  const riga = (etichetta, valore) => `<tr><td>${etichetta}</td><td>${valore === "" || valore == null ? "·" : valore}</td></tr>`;
+  const riga = (it, ro, valore) => `<tr><td>${it} <span class="ro" lang="ro">· ${ro}</span></td><td>${valore === "" || valore == null ? "·" : valore}</td></tr>`;
   return `<div class="scheda"><h2>${p.code} · ${p.name}</h2>` +
     `<div class="stato">${NOMI_STATO[d.stato]}</div>` +
-    `<table>${riga("Nominativi", d.nom)}${riga("Visite", d.vis)}${riga("Studi", d.stu)}${riga("Ultima uscita", d.ultima)}</table>` +
-    `<a href="${p.th}" target="_blank" rel="noopener">Apri in TerritoryHelper</a></div>`;
+    `<table>${riga("Nominativi", "Adrese", d.nom)}${riga("Visite", "Vizite", d.vis)}${riga("Studi", "Studii", d.stu)}${riga("Ultima uscita", "Ultima ieșire", d.ultima)}</table>` +
+    `<a href="${p.th}" target="_blank" rel="noopener">Apri in TerritoryHelper<span class="ro" lang="ro">Deschide în TerritoryHelper</span></a></div>`;
 }
 
 const confini = L.geoJSON(TERRITORI, {
@@ -154,13 +179,28 @@ const confini = L.geoJSON(TERRITORI, {
 }).addTo(mappa);
 mappa.fitBounds(confini.getBounds(), { padding: [18, 18] });
 
+// Avviso in alto: riga italiana in grassetto, riga romena sotto, nota piccola facoltativa.
 let timerAvviso = null;
-function mostraAvviso(testo, durata) {
+let avvisoTabellone = false;
+function mostraAvviso(it, ro, { durata = 0, nota = "", classe = "" } = {}) {
   const box = document.getElementById("avviso");
-  box.textContent = testo;
+  const riga = (tag, testo, cls) => {
+    const el = document.createElement(tag);
+    el.textContent = testo;
+    if (cls) el.className = cls;
+    if (cls === "ro") el.lang = "ro";
+    return el;
+  };
+  box.replaceChildren(riga("b", it), riga("span", ro, "ro"));
+  if (nota) box.append(riga("span", nota, "nota"));
+  box.className = "avviso" + (classe ? " " + classe : "");
   box.hidden = false;
   clearTimeout(timerAvviso);
   if (durata) timerAvviso = setTimeout(() => { box.hidden = true; }, durata);
+}
+function nascondiAvviso() {
+  clearTimeout(timerAvviso);
+  document.getElementById("avviso").hidden = true;
 }
 
 function statoDa(testo) {
@@ -198,9 +238,16 @@ async function carica() {
     document.getElementById("aggiornato").textContent = ultimo && ultimo !== "·"
       ? `Ultimo rapporto ${ultimo} · controllato alle ${ora}`
       : `Ancora nessun rapporto · controllato alle ${ora}`;
-    document.getElementById("avviso").hidden = true;
+    if (avvisoTabellone) {
+      avvisoTabellone = false;
+      if (seguo) scriviPosizione(); else nascondiAvviso();
+    }
   } catch (errore) {
-    mostraAvviso("Non riesco a leggere il Tabellone adesso: vedi solo i confini. Riprovo fra poco.");
+    avvisoTabellone = true;
+    const riga = document.getElementById("aggiornato");
+    if (riga.textContent.startsWith("Carico")) riga.textContent = "Tabellone non raggiungibile adesso · riprovo fra poco";
+    if (!seguo) mostraAvviso("Non riesco a leggere il Tabellone adesso: vedi solo i confini. Riprovo fra poco.",
+      "Nu pot citi tabelul acum: vezi doar granițele. Reîncerc în curând.");
   }
 }
 carica();
@@ -215,19 +262,162 @@ function dentro(punto, anello) {
   }
   return esito;
 }
-let posizione = null;
-document.getElementById("dove").addEventListener("click", () => {
-  mostraAvviso("Cerco la tua posizione…");
-  mappa.locate({ setView: true, maxZoom: 17, enableHighAccuracy: true });
+// Posizione in tempo reale: il tasto accende e spegne; la mappa ti segue finché non la sposti a mano.
+const OPZIONI_GPS = { watch: true, setView: false, enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 };
+const bottone = document.getElementById("dove");
+const centra = document.getElementById("centra");
+let puntino = null, alone = null, ultimaPosizione = null, precisione = 0;
+let primaVolta = true, ultimoFix = 0, controllo = null;
+let territorio, candidato, conferme = 0, cambiatoAlle = 0;
+let schermo = null, ultimoTocco = Date.now();
+
+function etichettaBottone(it, ro) {
+  document.getElementById("dove-it").textContent = it;
+  document.getElementById("dove-ro").textContent = ro;
+}
+
+function avvia() {
+  seguo = true;
+  primaVolta = true;
+  ultimoFix = 0;
+  territorio = undefined; candidato = undefined; conferme = 0;
+  bottone.setAttribute("aria-pressed", "true");
+  etichettaBottone("⏹ Ferma", "Oprește");
+  mostraAvviso("Cerco la tua posizione…", "Caut poziția ta…", { classe: "posto" });
+  mappa.locate(OPZIONI_GPS);
+  tieniAcceso();
+  controllo = setInterval(controllaSegnale, 5000);
+}
+
+function ferma() {
+  seguo = false;
+  mappa.stopLocate();
+  clearInterval(controllo);
+  if (puntino) { puntino.remove(); alone.remove(); puntino = alone = null; }
+  ultimaPosizione = null;
+  centra.hidden = true;
+  lasciaSpegnere();
+  bottone.setAttribute("aria-pressed", "false");
+  etichettaBottone("📍 Dove sono", "Unde sunt");
+  nascondiAvviso();
+}
+
+bottone.addEventListener("click", () => { seguo ? ferma() : avvia(); });
+
+// Se sposti la mappa col dito smette di seguirti; il mirino a destra la riporta su di te.
+mappa.on("dragstart", () => { if (seguo && ultimaPosizione) { centro = false; centra.hidden = false; } });
+centra.addEventListener("click", () => {
+  centro = true;
+  centra.hidden = true;
+  if (ultimaPosizione) mappa.setView(ultimaPosizione, Math.max(mappa.getZoom(), 17));
 });
+
 mappa.on("locationfound", e => {
-  if (posizione) posizione.remove();
-  posizione = L.circleMarker(e.latlng, { radius: 8, color: "#ffffff", weight: 3, fillColor: "#1a73e8", fillOpacity: 1 }).addTo(mappa);
-  const qui = TERRITORI.features.find(f => dentro(e.latlng, f.geometry.coordinates[0]));
-  mostraAvviso(qui ? `Sei nel territorio ${qui.properties.code}` : "Sei fuori dai territori della campagna", 5000);
+  if (!seguo) return;
+  ultimoFix = Date.now();
+  ultimaPosizione = e.latlng;
+  precisione = Math.round(e.accuracy);
+  if (!puntino) {
+    alone = L.circle(e.latlng, { radius: e.accuracy, color: "#1a73e8", weight: 1, opacity: 0.6, fillColor: "#1a73e8", fillOpacity: 0.12, interactive: false }).addTo(mappa);
+    puntino = L.circleMarker(e.latlng, { radius: 8, color: "#ffffff", weight: 3, fillColor: "#1a73e8", fillOpacity: 1, interactive: false }).addTo(mappa);
+  } else {
+    alone.setLatLng(e.latlng).setRadius(e.accuracy);
+    puntino.setLatLng(e.latlng).setStyle({ fillColor: "#1a73e8" });
+  }
+  if (primaVolta) {
+    primaVolta = false;
+    centro = true;
+    mappa.setView(e.latlng, Math.max(mappa.getZoom(), 17));
+  } else if (centro) {
+    mappa.panTo(e.latlng);
+  }
+  aggiornaTerritorio(e.latlng);
+  scriviPosizione();
 });
-mappa.on("locationerror", () => {
-  mostraAvviso("Posizione non disponibile: consenti a Chrome di usare la posizione e riprova.", 6000);
+
+// Il territorio cambia solo dopo due letture di fila nel nuovo: vicino a un confine il GPS balla.
+function aggiornaTerritorio(latlng) {
+  const trovato = TERRITORI.features.find(f => dentro(latlng, f.geometry.coordinates[0]));
+  const codice = trovato ? trovato.properties.code : null;
+  if (codice === territorio) { candidato = undefined; conferme = 0; return; }
+  if (codice === candidato) conferme++; else { candidato = codice; conferme = 1; }
+  if (territorio !== undefined && conferme < 2) return;
+  const primo = territorio === undefined;
+  territorio = codice;
+  candidato = undefined; conferme = 0;
+  if (!primo) {
+    cambiatoAlle = Date.now();
+    if (navigator.vibrate) navigator.vibrate(150);
+    if (codice) lampeggia(codice);
+  }
+}
+
+function lampeggia(codice) {
+  const strato = strati[codice];
+  if (!strato) return;
+  strato.setStyle({ weight: 5 });
+  setTimeout(() => strato.setStyle({ weight: STILI[(dati[codice] || {}).stato || "fare"].weight }), 3000);
+}
+
+function scriviPosizione() {
+  if (!seguo || !ultimoFix) return;
+  const fermo = Math.round((Date.now() - ultimoFix) / 1000);
+  let nota = precisione > 40
+    ? `posizione approssimativa · poziție aproximativă ±${precisione} m`
+    : `precisione · precizie ±${precisione} m`;
+  if (fermo >= 30) nota = `non si aggiorna da ${fermo} s · neactualizată de ${fermo} s`;
+  const appena = Date.now() - cambiatoAlle < 6000;
+  if (!territorio) {
+    mostraAvviso("Sei fuori dai territori della campagna", "Ești în afara teritoriilor campaniei", { nota, classe: "posto" });
+  } else if (appena) {
+    mostraAvviso(`Ora sei nel territorio ${territorio}`, `Ai intrat în teritoriul ${territorio}`, { nota, classe: "nuovo" });
+  } else {
+    mostraAvviso(`Sei nel territorio ${territorio}`, `Ești în teritoriul ${territorio}`, { nota, classe: "posto" });
+  }
+}
+
+function controllaSegnale() {
+  if (!seguo) return;
+  if (ultimoFix && Date.now() - ultimoFix >= 30000 && puntino) puntino.setStyle({ fillColor: "#8a97a6" });
+  scriviPosizione();
+  if (schermo && Date.now() - ultimoTocco > 15 * 60 * 1000) lasciaSpegnere();
+}
+
+mappa.on("locationerror", e => {
+  if (!seguo) return;
+  if (e.code === 1) {
+    ferma();
+    mostraAvviso("Chrome non ha il permesso della posizione: consentilo nelle Impostazioni dell'iPhone e riprova.",
+      "Chrome nu are permisiunea pentru locație: permite-o în Setările telefonului și încearcă din nou.", { durata: 9000 });
+  } else if (!ultimoFix) {
+    mostraAvviso("Segnale GPS debole, continuo a cercare…", "Semnal GPS slab, caut în continuare…", { classe: "posto" });
+  }
+});
+
+// Schermo acceso mentre la posizione è attiva; dopo 15 minuti senza tocchi torna a spegnersi da solo.
+async function tieniAcceso() {
+  if (!seguo || schermo || document.hidden || !("wakeLock" in navigator)) return;
+  try {
+    schermo = await navigator.wakeLock.request("screen");
+    schermo.addEventListener("release", () => { schermo = null; });
+  } catch (errore) { schermo = null; }
+}
+function lasciaSpegnere() {
+  if (schermo) schermo.release().catch(() => {});
+  schermo = null;
+}
+document.addEventListener("pointerdown", () => {
+  ultimoTocco = Date.now();
+  if (seguo && !schermo) tieniAcceso();
+}, { passive: true });
+
+// Tornando sulla pagina (schermo riacceso, altra app chiusa) il GPS si riavvia.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !seguo) return;
+  mappa.stopLocate();
+  mappa.locate(OPZIONI_GPS);
+  ultimoTocco = Date.now();
+  tieniAcceso();
 });
 </script>
 </body>
