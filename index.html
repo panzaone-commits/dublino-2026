@@ -34,6 +34,7 @@ body {
   gap: 6px;
 }
 .barra h1 { margin: 0; font-size: 15px; color: var(--blu); letter-spacing: .01em; text-wrap: balance; }
+.barra h1 small.versione { font-size: 10px; opacity: .7; }
 .barra h1 small { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--grigio); }
 .numeri { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .numeri div { background: var(--fondo); border-radius: 8px; padding: 4px 4px 5px; text-align: center; }
@@ -176,7 +177,7 @@ body {
 </head>
 <body>
 <header class="barra">
-  <h1>Tyrrelstown · Dublin Romanian SPC<small id="aggiornato">Carico i dati del Tabellone…</small></h1>
+  <h1>Tyrrelstown · Dublin Romanian SPC<small id="aggiornato">Carico i dati del Tabellone…</small><small class="versione">versione 27/09 · linee</small></h1>
   <div class="numeri">
     <div><b id="k-finiti">·</b><span>finiti<br>terminate · done</span></div>
     <div><b id="k-nom">·</b><span>nominativi<br>adrese · contacts</span></div>
@@ -539,12 +540,12 @@ function scrivi(nome, valore) { try { localStorage.setItem(nome, valore); } catc
 
 (function preparaGruppo() {
   const daLink = new URLSearchParams(location.hash.slice(1)).get("g");
-  if (daLink) {
-    scrivi("dublino-chiave", daLink);
-    history.replaceState(null, "", location.pathname + location.search);
-  }
+  if (daLink) scrivi("dublino-chiave", daLink);
   chiave = daLink || leggi("dublino-chiave");
   if (!chiave || !POSIZIONI_URL.startsWith("https://")) return;
+  // La chiave resta nell'indirizzo: così «Aggiungi alla schermata Home» crea un'icona che la conosce
+  // (l'icona sulla Home ha una memoria separata dal browser).
+  if (!daLink) history.replaceState(null, "", location.pathname + location.search + "#g=" + encodeURIComponent(chiave));
   mioId = leggi("dublino-id");
   if (!mioId) {
     mioId = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => (b % 36).toString(36)).join("") + Date.now().toString(36).slice(-4);
