@@ -145,6 +145,33 @@ body {
 }
 .foglio .scelte button.si { background: var(--blu); border-color: var(--blu); color: #fff; }
 .foglio .scelte .ro { display: block; font-size: 11px; font-weight: 500; opacity: .8; }
+.penna {
+  position: absolute; left: 10px; top: 10px; z-index: 700;
+  width: 40px; height: 40px; padding: 0; cursor: pointer; font-size: 19px;
+  background: var(--carta); border: 2px solid rgba(0, 0, 0, .2); border-radius: 8px;
+}
+.penna[aria-pressed="true"] { background: var(--blu); border-color: var(--blu); }
+.penna[hidden], .attrezzi[hidden], .tela[hidden] { display: none; }
+.tela { position: absolute; inset: 0; z-index: 450; touch-action: none; cursor: crosshair; }
+.attrezzi {
+  position: absolute; left: 10px; right: 10px; bottom: 22px; z-index: 700;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--carta); border-radius: 12px; padding: 8px 10px; box-shadow: 0 1px 6px rgba(0, 0, 0, .25);
+}
+.attrezzi .colore {
+  width: 34px; height: 34px; flex: none; padding: 0; cursor: pointer;
+  border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25);
+}
+.attrezzi .colore[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--inchiostro); }
+.attrezzi .testo {
+  flex: 1; min-width: 0; cursor: pointer; padding: 6px 4px; border-radius: 10px;
+  font: 600 12px/1.15 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  border: 1px solid var(--linea); background: var(--fondo); color: var(--blu);
+}
+.attrezzi .testo.fine { background: var(--blu); border-color: var(--blu); color: #fff; }
+.attrezzi .testo .ro { display: block; font-size: 10px; font-weight: 500; opacity: .8; }
+.cancella-linea { margin-top: 2px; cursor: pointer; font: 600 13px/1.2 system-ui, -apple-system, sans-serif; color: #a01818; background: #fdecec; border: 1px solid #f0b4b4; border-radius: 8px; padding: 7px 10px; }
+.cancella-linea .ro { display: block; font-size: 11px; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -166,6 +193,16 @@ body {
   </div>
   <div id="avviso" class="avviso" role="status" hidden></div>
   <div id="gruppo-stato" class="gruppo-stato" role="status" hidden></div>
+  <div id="tela" class="tela" hidden></div>
+  <button type="button" id="penna" class="penna" aria-pressed="false" hidden aria-label="Segna sulla mappa · Marchează pe hartă" title="Segna sulla mappa · Marchează pe hartă">✏️</button>
+  <div id="attrezzi" class="attrezzi" hidden>
+    <button type="button" class="colore" data-colore="verde" aria-label="Verde · Verde"></button>
+    <button type="button" class="colore" data-colore="rosa" aria-label="Rosa · Roz"></button>
+    <button type="button" class="colore" data-colore="blu" aria-label="Blu · Albastru"></button>
+    <button type="button" class="colore" data-colore="arancione" aria-label="Arancione · Portocaliu"></button>
+    <button type="button" class="testo" id="annulla-linea">↶ Annulla<span class="ro" lang="ro">Anulează</span></button>
+    <button type="button" class="testo fine" id="fine-penna">Fine<span class="ro" lang="ro">Gata</span></button>
+  </div>
   <button type="button" id="centra" class="centra" hidden aria-label="Centra su di me · Centrează pe mine" title="Centra su di me · Centrează pe mine">
     <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="10" r="2.5" fill="currentColor"/><path d="M10 0v4M10 16v4M0 10h4M16 10h4" stroke="currentColor" stroke-width="2"/></svg>
   </button>
@@ -623,6 +660,210 @@ function salutaGruppo() {
   } catch (errore) {}
 }
 window.addEventListener("pagehide", () => { if (condivido) salutaGruppo(); });
+
+// Linee a mano libera condivise col gruppo (strade fatte). Il pennino c'è solo con il link del gruppo.
+// Ogni linea la può cancellare solo il telefono che l'ha tracciata; il 12/10 il programma le cancella tutte.
+const COLORI_LINEA = { verde: "#0b8043", rosa: "#e0218a", blu: "#1a3fcc", arancione: "#f57c00" };
+const tela = document.getElementById("tela");
+const penna = document.getElementById("penna");
+const attrezzi = document.getElementById("attrezzi");
+const stratoLinee = L.layerGroup().addTo(mappa);
+const lineeInMappa = {};
+let versioneLinee = "", disegno = false, tratto = null, puntiTratto = [];
+let coloreScelto = COLORI_LINEA[leggi("dublino-colore")] ? leggi("dublino-colore") : "verde";
+let mieLinee = [];
+
+function daInviare() { try { return JSON.parse(leggi("dublino-linee-da-inviare") || "[]"); } catch (errore) { return []; } }
+function salvaDaInviare(lista) { scrivi("dublino-linee-da-inviare", JSON.stringify(lista)); }
+function nuovoCodice() { return Array.from(crypto.getRandomValues(new Uint8Array(10)), b => (b % 36).toString(36)).join(""); }
+function stileLinea(colore, inAttesa) {
+  return { color: COLORI_LINEA[colore], weight: 5, opacity: 0.9, lineCap: "round", lineJoin: "round", dashArray: inAttesa ? "2 9" : null };
+}
+
+for (const b of attrezzi.querySelectorAll(".colore")) {
+  b.style.background = COLORI_LINEA[b.dataset.colore];
+  b.addEventListener("click", () => { coloreScelto = b.dataset.colore; scrivi("dublino-colore", coloreScelto); segnaColore(); });
+}
+function segnaColore() {
+  for (const b of attrezzi.querySelectorAll(".colore")) b.setAttribute("aria-pressed", String(b.dataset.colore === coloreScelto));
+}
+segnaColore();
+
+if (chiave && POSIZIONI_URL.startsWith("https://")) {
+  penna.hidden = false;
+  aggiornaLinee();
+  setInterval(aggiornaLinee, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) aggiornaLinee(); });
+}
+
+penna.addEventListener("click", () => { disegno ? chiudiPenna() : apriPenna(); });
+document.getElementById("fine-penna").addEventListener("click", chiudiPenna);
+document.getElementById("annulla-linea").addEventListener("click", annullaUltima);
+
+function apriPenna() {
+  disegno = true;
+  mappa.closePopup();
+  if (seguo && ultimaPosizione) { centro = false; centra.hidden = false; }
+  penna.setAttribute("aria-pressed", "true");
+  tela.hidden = false;
+  attrezzi.hidden = false;
+  document.querySelector(".legenda").hidden = true;
+  mostraAvviso("Traccia col dito le strade fatte. Per spostare la mappa tocca Fine.",
+    "Desenează cu degetul străzile făcute. Ca să muți harta apasă Gata.", { durata: 6000 });
+}
+function chiudiPenna() {
+  disegno = false;
+  annullaTratto();
+  penna.setAttribute("aria-pressed", "false");
+  tela.hidden = true;
+  attrezzi.hidden = true;
+  document.querySelector(".legenda").hidden = false;
+  if (!seguo) nascondiAvviso();
+}
+
+function puntoDa(e) {
+  const r = tela.getBoundingClientRect();
+  return mappa.containerPointToLatLng([e.clientX - r.left, e.clientY - r.top]);
+}
+tela.addEventListener("pointerdown", e => {
+  if (!e.isPrimary) { annullaTratto(); return; }
+  try { tela.setPointerCapture(e.pointerId); } catch (errore) {}
+  puntiTratto = [puntoDa(e)];
+  tratto = L.polyline(puntiTratto, stileLinea(coloreScelto, false)).addTo(stratoLinee);
+});
+tela.addEventListener("pointermove", e => {
+  if (!tratto || !e.isPrimary) return;
+  const p = puntoDa(e);
+  const prima = mappa.latLngToContainerPoint(puntiTratto[puntiTratto.length - 1]);
+  if (mappa.latLngToContainerPoint(p).distanceTo(prima) < 3) return;
+  puntiTratto.push(p);
+  tratto.addLatLng(p);
+});
+tela.addEventListener("pointerup", e => { if (e.isPrimary) chiudiTratto(); });
+tela.addEventListener("pointercancel", annullaTratto);
+
+function annullaTratto() {
+  if (tratto) tratto.remove();
+  tratto = null;
+  puntiTratto = [];
+}
+
+function chiudiTratto() {
+  if (!tratto) return;
+  const schermo = puntiTratto.map(p => mappa.latLngToContainerPoint(p));
+  let lunghezza = 0;
+  for (let i = 1; i < schermo.length; i++) lunghezza += schermo[i].distanceTo(schermo[i - 1]);
+  if (schermo.length < 2 || lunghezza < 12) { annullaTratto(); return; }
+  let tolleranza = 1.5, semplice = L.LineUtil.simplify(schermo, tolleranza);
+  while (semplice.length > 400) { tolleranza *= 1.6; semplice = L.LineUtil.simplify(schermo, tolleranza); }
+  const punti = semplice.map(s => mappa.containerPointToLatLng(s)).map(p => [Math.round(p.lat * 1e5) / 1e5, Math.round(p.lng * 1e5) / 1e5]);
+  const lid = nuovoCodice();
+  tratto.setLatLngs(punti).setStyle(stileLinea(coloreScelto, true));
+  lineeInMappa[lid] = tratto;
+  tratto = null;
+  puntiTratto = [];
+  const coda = daInviare();
+  coda.push({ lid, c: coloreScelto, p: punti, t: Date.now() });
+  salvaDaInviare(coda);
+  inviaLinee();
+}
+
+async function chiamaLinee(corpo) {
+  const risposta = await fetch(POSIZIONI_URL, { method: "POST", body: JSON.stringify(Object.assign({ k: chiave, id: mioId }, corpo)), cache: "no-store" });
+  return risposta.json();
+}
+
+let inviando = false;
+async function inviaLinee() {
+  if (inviando) return;
+  inviando = true;
+  try {
+    for (const linea of daInviare()) {
+      const esito = await chiamaLinee({ a: "traccia", lid: linea.lid, c: linea.c, p: linea.p });
+      if (esito.ok) {
+        salvaDaInviare(daInviare().filter(x => x.lid !== linea.lid));
+        disegnaLinee(esito);
+      } else if (esito.pieno) {
+        mostraAvviso("Spazio delle linee pieno: cancellate quelle che non servono più.", "Spațiul pentru linii e plin: ștergeți liniile care nu mai trebuie.", { durata: 8000 });
+        break;
+      } else if (!esito.occupato) {
+        salvaDaInviare(daInviare().filter(x => x.lid !== linea.lid));
+        if (lineeInMappa[linea.lid]) { lineeInMappa[linea.lid].remove(); delete lineeInMappa[linea.lid]; }
+      }
+    }
+  } catch (errore) {
+    mostraAvviso("Niente rete: la linea resta sul telefono e parte appena c'è connessione.", "Fără rețea: linia rămâne pe telefon și pleacă imediat ce e conexiune.", { durata: 5000 });
+  } finally {
+    inviando = false;
+  }
+}
+
+async function aggiornaLinee() {
+  if (document.hidden) return;
+  if (daInviare().length) await inviaLinee();
+  try {
+    const esito = await chiamaLinee({ a: "linee", v: versioneLinee });
+    if (esito.ok && !esito.uguali) disegnaLinee(esito);
+  } catch (errore) {}
+}
+
+function disegnaLinee(esito) {
+  if (!esito || !Array.isArray(esito.linee)) return;
+  versioneLinee = esito.v;
+  const inCoda = new Set(daInviare().map(x => x.lid));
+  const viste = new Set();
+  mieLinee = [];
+  for (const l of esito.linee) {
+    viste.add(l.lid);
+    const punti = [];
+    let la = 0, lo = 0;
+    for (let i = 0; i + 1 < l.p.length; i += 2) { la += l.p[i]; lo += l.p[i + 1]; punti.push([la / 1e5, lo / 1e5]); }
+    if (lineeInMappa[l.lid]) lineeInMappa[l.lid].remove();
+    const linea = L.polyline(punti, Object.assign(stileLinea(l.c, false), { interactive: l.mia })).addTo(stratoLinee);
+    if (l.mia) {
+      mieLinee.push({ lid: l.lid, t: l.t });
+      linea.bindPopup(() => bottoneCancella(l.lid));
+    }
+    lineeInMappa[l.lid] = linea;
+  }
+  for (const lid of Object.keys(lineeInMappa)) {
+    if (!viste.has(lid) && !inCoda.has(lid)) { lineeInMappa[lid].remove(); delete lineeInMappa[lid]; }
+  }
+}
+
+function bottoneCancella(lid) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "cancella-linea";
+  b.textContent = "🗑 Cancella questa linea";
+  const ro = document.createElement("span"); ro.className = "ro"; ro.lang = "ro"; ro.textContent = "Șterge această linie";
+  b.append(ro);
+  b.addEventListener("click", () => { mappa.closePopup(); cancellaLinea(lid); });
+  return b;
+}
+
+async function cancellaLinea(lid) {
+  const coda = daInviare();
+  if (coda.some(x => x.lid === lid)) {
+    salvaDaInviare(coda.filter(x => x.lid !== lid));
+    if (lineeInMappa[lid]) { lineeInMappa[lid].remove(); delete lineeInMappa[lid]; }
+  } else {
+    try {
+      const esito = await chiamaLinee({ a: "cancella", lid });
+      if (!esito.ok) throw new Error("rifiutata");
+      disegnaLinee(esito);
+    } catch (errore) {
+      mostraAvviso("Non riesco a cancellare adesso: riprova fra poco.", "Nu pot șterge acum: încearcă din nou puțin mai târziu.", { durata: 5000 });
+    }
+  }
+}
+
+function annullaUltima() {
+  const coda = daInviare();
+  if (coda.length) { cancellaLinea(coda[coda.length - 1].lid); return; }
+  const ultima = mieLinee.slice().sort((a, b) => b.t - a.t)[0];
+  if (ultima) cancellaLinea(ultima.lid);
+}
 </script>
 </body>
 </html>
